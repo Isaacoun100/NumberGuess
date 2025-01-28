@@ -15,6 +15,7 @@ include "emu8086.inc"
     errorRand DB "Error: no se pudo generar un numero", 13, 10, "$"
     errorRandOp1 DB "1. Reintentar genera numero aleatorio", 13, 10, "$"
     errorRandOp2 DB "2. Ingresar otro valor de inico/final", 13, 10, "$"
+    salirJuego db "presione (s) para salir del juego y (r) para reiniciar", 13, 10, "$"
     firstValue DW 0
     secondValue DW 0
     numAleAtorio DW 0
@@ -29,13 +30,20 @@ endm
 
 generarRand macro
     ; Solicitar primer numero
+    imp salirJuego
     imp requestNumber1
 leerNum1:
     ; Leer un caracter para el primer numero
     mov ah, 1
     int 21h
     cmp al, 13
-    je prepareSecond    ;Si el usuario presiona enter termina el proceso
+    je prepareSecond    ;Si el juegador presiona enter termina el proceso
+    
+    cmp al, "r"         ;Si el jugador presiona r sale del juego
+    je saltarProc
+    cmp al, "s"     ;Si el jugador presiona s sale del juego
+    je saltarProc                                                
+    
     ;Obtiene y almacena el siguiente digito del numero
     sub al, 48
     mov bl, al
@@ -51,6 +59,7 @@ loop leerNum1
 prepareSecond:
     ; Solicitar el segundo numero
     imp vacio
+    imp salirJuego
     imp requestNumber2
     jmp leerNum2
 
@@ -60,6 +69,12 @@ leerNum2:
     int 21h
     cmp al, 13
     je prepararNum      ;Si el usuario presiona enter termina el proceso
+    
+    cmp al, "r"         ;Si el jugador presiona r sale del juego
+    je saltarProc
+    cmp al, "s"     ;Si el jugador presiona s sale del juego
+    je saltarProc
+    
     ;Obtiene y almacena el siguiente digito del numero
     sub al, 48
     mov bl, al
@@ -121,6 +136,12 @@ erroRandGenerar:
     je prepararNum
     cmp al, "2"
     jne erroRandGenerar
+    
+    cmp al, "r"         ;Si el jugador presiona r sale del juego
+    je saltarProc
+    cmp al, "s"     ;Si el jugador presiona s sale del juego
+    je saltarProc
+    
     ;Pide el primer valor del nuevo rango
     imp vacio
     imp requestNumber1
@@ -131,15 +152,22 @@ final:
     mov ax, numAleatorio
     cmp ax, firstValue
     jl erroRandGenerar  
-    call print_num    
+    call print_num
+saltarProc:    
 endm
     DEFINE_PRINT_NUM
     DEFINE_PRINT_NUM_UNS
     ; Inicio del programa
     MOV AX, @DATA
     MOV DS, AX
-        
+iniciarJuego:
+    imp vacio        
     generarRand
+    cmp al, "r"
+    je iniciarJuego
+    cmp al, "s"
+    je salir
+salir:
     ; Terminar programa
     MOV AH, 4Ch
     INT 21h
