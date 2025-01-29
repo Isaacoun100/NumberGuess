@@ -39,13 +39,14 @@ imp macro mensaje
 endm
 
 adiv macro
-    mov firstValue, 0
+    mov firstValue, 0       ;Reutiliza firstValue para almacenar la el numero del jugador
     mov cx, 10
 jugadorAdiv:
+    ;Obtiene el digito del jugador
     mov ah, 1
     int 21h
     cmp al, 13
-    je finalAdiv
+    je finalAdiv        ;Finaliza si el jugador presiona enter
     
     cmp al, "r"         ;Si el jugador presiona r sale del juego
     je finalAdiv
@@ -55,12 +56,13 @@ jugadorAdiv:
     je finalAdiv
     cmp al, "S"
     je finalAdiv
-    
-    sub al, 48
+    ;Verifica que se haya ingresado un numero
+    sub al, 48      ;Convierte de ASCII a decimal
     cmp al, 9
     jg errorAdivJ
     cmp al, 0
-    jl errorAdivJ
+    jl errorAdivJ       ;Si no es un numero del 0 al 9 salta al error
+    ;Ingresa el digito al resto del numero en firstValue
     mov bl, al
     xor ax, ax
     mov ax, firstValue
@@ -73,7 +75,8 @@ loop jugadorAdiv
     
 errorAdivJ:
    imp vacio
-   imp errorAdiv
+   imp errorAdiv        ;Salta error al jugador por no ingresar un digito
+   ;El jugador debe reintentar ingresar un numero 
    imp mostrarIntentos
    mov ah, 02
    mov dl, numIntentos
@@ -254,15 +257,16 @@ iniciarJuego:
     cmp al, "S"
     je salir
 adivinar:
-    imp mostrarIntentos
+    imp mostrarIntentos     ;Imprime el numero del intento actual
     mov ah, 02
     mov dl, numIntentos
     add dl, 30h
     int 21h
+    
     imp vacio
-    imp salirJuego
-    imp pregunta
-    adiv
+    imp salirJuego      ;Imprime las opciones de salida del juego
+    imp pregunta        ;Pregunta al jugador que adivine el numero
+    adiv        ;Obtiene el numero del jugador
     cmp al, "r"     ; si el jugador presiona "r" reinicia el juego
     je iniciarJuego                                              
     cmp al, "R"
@@ -272,43 +276,52 @@ adivinar:
     je salir
     cmp al, "S"
     je salir
+    ;Compara el numero aleatorio con la adivinacion del jugador
     mov ax, firstValue
     cmp ax, numAleatorio
-    je ganador
-    jg mayor
-    jl menor
+    je ganador      ;Si son iguales el jugador gana
+    jg mayor        ;Si la adivinacion es mayor al numero secreto lo indica
+    jl menor        ;Si la adivinacion es menor al numero secreto lo indica
 
 mayor:
+    ;Muestra al jugador que su adivinacion es mayor al numero secreto
     imp arriba
     imp vacio
-    inc numIntentos
+    inc numIntentos     ;Incrementa el numero de intentos
+    ;El jugador pierde si el numero de intentos es mayor a 5
     mov al, numIntentos
-    cmp al, 6
-    je perdida
+    cmp al, 5
+    jg perdida
+    ;Le pide al jugador su siguiente adivinacion
     jmp adivinar
 
 menor:
+    ;Muestra al jugador que su adivinacion es menor al numero secreto
     imp abajo
     imp vacio
-    inc numIntentos
+    inc numIntentos         ;Incrementa el numero de intentos
+    ;El jugador pierde si el numero de intentos es mayor a 5
     mov al, numIntentos
-    cmp al, 6
-    je perdida
+    cmp al, 5
+    jg perdida  
+    ;Le pide al jugador su siguiente adivinacion
     jmp adivinar    
 
 perdida:
     imp vacio
-    imp perdio
-    imp revelar
-    mov ax, numAleatorio
+    imp perdio      ;Indica que el jugador a perdido
+    ;Le revela el numero secreto al jugado
+    imp revelar     
+    mov ax, numAleatorio        
     CALL print_num
     jmp salir
         
     
 ganador:
     imp vacio
-    imp victoria
-    imp mostrarIntentos
+    imp victoria        ;Indica al jugador que ha ganado
+    ;le muestra al jugador el numero de intentos utilizados
+    imp mostrarIntentos     
     xor ax, ax
     mov al, numIntentos
     CALL print_num 
