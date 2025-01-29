@@ -1,0 +1,321 @@
+; Lee, S. C. (2024801079). 
+; Bennett Lewis, R. (2022133987). 
+; Herera Monge, I. (201916055).
+;
+; Tecnologico de Costa Rica
+include "emu8086.inc"
+.MODEL SMALL
+
+.DATA
+    titulo DB "Reto del numero secreto", 13, 10, "$"
+    instruccion DB "Adivine el numero secreto entre los valores engresados para ganar, solo tiene 5 intentos", 13, 10, "$"
+    aleatorio DB "Ingrese un numero aleatorio",13, 10, "$"
+    pregunta DB "Cual es el numero secreto: ", 13, 10, "$"
+    mostrarIntentos DB "Numero de intentos: ", "$"
+    vacio DB 13, 10, "$"
+    requestNumber1 DB "Ingrese el primer valor (menor)$"
+    requestNumber2 DB "Ingrese el segundo valor (mayor)$"
+    errorRand DB "Error: no se pudo generar un numero", 13, 10, "$"
+    errorRandOp1 DB "1. Reintentar genera numero aleatorio", 13, 10, "$"
+    errorRandOp2 DB "2. Ingresar otro valor de inico/final", 13, 10, "$"
+    salirJuego db "presione (s) para salir del juego y (r) para reiniciar", 13, 10, "$"
+    errorAdiv DB "El dato ingresado no es valido, vuelva a intentarlo", 13, 10, "$"
+    victoria DB "Ganador", 13, 10, "$"
+    perdio DB "Derrota", 13, 10, "$"
+    arriba DB " > ?$"
+    abajo DB " < ?$"
+    revelar DB "El numero secreto es: ", 13, 10, "$"
+    firstValue DW 0
+    secondValue DW 0
+    numAleatorio DW 0
+    tempRand DW 0
+    numIntentos DB 0
+
+.CODE
+imp macro mensaje
+    mov ah, 09
+    lea dx, mensaje
+    int 21h
+endm
+
+adiv macro
+    mov firstValue, 0
+    mov cx, 10
+jugadorAdiv:
+    mov ah, 1
+    int 21h
+    cmp al, 13
+    je finalAdiv
+    
+    cmp al, "r"         ;Si el jugador presiona r sale del juego
+    je finalAdiv
+    cmp al, "R"
+    je finalAdiv
+    cmp al, "s"     ;Si el jugador presiona s sale del juego
+    je finalAdiv
+    cmp al, "S"
+    je finalAdiv
+    
+    sub al, 48
+    cmp al, 9
+    jg errorAdivJ
+    cmp al, 0
+    jl errorAdivJ
+    mov bl, al
+    xor ax, ax
+    mov ax, firstValue
+    mov bh, 10      ;Multiplica el numero anterio por 10 dandole espacio al nuevo digito
+    mul bh
+    xor bh, bh
+    add ax, bx      ;Anade el nuevo digito
+    mov firstValue, ax     ; Guardar el valor en firstValue
+loop jugadorAdiv
+    
+errorAdivJ:
+   imp vacio
+   imp errorAdiv
+   imp mostrarIntentos
+   mov ah, 02
+   mov dl, numIntentos
+   add dl, 30h
+   int 21h
+   imp vacio
+   imp salirJuego
+   imp pregunta
+   jmp jugadorAdiv
+
+finalAdiv:
+endm     
+
+generarRand macro
+    ; Solicitar primer numero
+    imp salirJuego
+    imp requestNumber1
+leerNum1:
+    ; Leer un caracter para el primer numero
+    mov ah, 1
+    int 21h
+    cmp al, 13
+    je prepareSecond    ;Si el juegador presiona enter termina el proceso
+    
+    cmp al, "r"         ;Si el jugador presiona r sale del juego
+    je saltarProc
+    cmp al, "R"
+    je saltarProc
+    cmp al, "s"     ;Si el jugador presiona s sale del juego
+    je saltarProc
+    cmp al, "S"
+    je saltarProc                                                
+    
+    ;Obtiene y almacena el siguiente digito del numero
+    sub al, 48
+    cmp al, 9
+    jg erroRandGenerar
+    cmp al, 0
+    jl erroRandGenerar
+    mov bl, al
+    xor ax, ax
+    mov ax, firstValue
+    mov bh, 10      ;Multiplica el numero anterio por 10 dandole espacio al nuevo digito
+    mul bh
+    xor bh, bh
+    add ax, bx      ;Anade el nuevo digito
+    mov firstValue, ax     ; Guardar el valor en firstValue
+loop leerNum1
+
+prepareSecond:
+    ; Solicitar el segundo numero
+    imp vacio
+    imp salirJuego
+    imp requestNumber2
+    jmp leerNum2
+
+leerNum2:
+    ; Leer un caracter para el segundo numero
+    mov ah, 1
+    int 21h
+    cmp al, 13
+    je prepararNum      ;Si el usuario presiona enter termina el proceso
+    
+    cmp al, "r"         ;Si el jugador presiona r sale del juego
+    je saltarProc
+    cmp al, "R"
+    je saltarProc
+    cmp al, "s"     ;Si el jugador presiona s sale del juego
+    je saltarProc
+    cmp al, "S"
+    je saltarProc
+    
+    ;Obtiene y almacena el siguiente digito del numero
+    sub al, 48
+    cmp al, 9
+    jg erroRandGenerar
+    cmp al, 0
+    jl erroRandGenerar
+    mov bl, al
+    xor ax, ax
+    mov ax, secondValue
+    mov bh, 10      ;Multiplica el numero anterio por 10 dandole espacio al nuevo digito
+    mul bh
+    xor bh, bh
+    add ax, bx      ;Anade el nuevo digito
+    mov secondValue, ax         ; Guardar el valor en second value
+loop leerNum2    
+
+prepararNum:
+    ;Se asegura que secondValue sea mayor que firstValue
+    mov ax, secondValue
+    cmp ax, firstValue
+    jle erroRandGenerar
+    mov ax, firstValue
+    cmp ax, 0
+    jl erroRandGenerar        ;firstValue debe ser mayor o igual a 0
+    ;Obtiene el numero de tics del reloj para el numero aleatorio
+    mov ah, 00h
+    int 1ah
+    mov tempRand, dx    ;Almacena el numero de tics desde medianoche en temRand 
+    jmp obtenerNum
+    
+obtenerNum:
+    ;Obtiene el primer digito del numero aleatorio
+    xor dx, dx
+    mov ax, tempRand
+    mov cx, 10
+    div cx
+    ;Guarda el numero aleatorio sin el primer digito para el siguiente ciclo
+    mov tempRand, ax
+    ;Revisa si numAleatorio con el nuevo digito es mayor que secondValue
+    mov ax, numAleatorio
+    mov bx, dx
+    mul cx      ;multiplica numAleatorio por 10 para hacer espacio al siguiente digito
+    add ax, bx
+    cmp ax, secondValue
+    jge final        ;Si el numero es mayor o igual a secondValue termina el proceso
+    ;Anade el numero con el nuevo digito a numAleatorio
+    mov numAleatorio, ax
+    ;Se revisa que tempRand sea diferente a 0 para el siguiente ciclo
+    mov ax, tempRand
+    cmp ax, 1
+    jl final
+loop obtenerNum
+
+erroRandGenerar:
+    ;Pregunta si el usuario desea generar un numero
+    ;Dentro del rango o ingresar un rango diferente
+    imp errorRand
+    imp errorRandOp1
+    imp errorRandOp2
+    mov ah, 1
+    int 21h
+    cmp al, "1"
+    je prepararNum
+    cmp al, "2"
+    jne erroRandGenerar
+    
+    cmp al, "r"         ;Si el jugador presiona r sale del juego
+    je saltarProc
+    cmp al, "R"
+    je saltarProc
+    cmp al, "s"     ;Si el jugador presiona s sale del juego
+    je saltarProc
+    cmp al, "S"
+    je saltarProc
+    
+    ;Pide el primer valor del nuevo rango
+    imp vacio
+    imp requestNumber1
+    jmp leerNum1
+
+final:
+    imp vacio
+    mov ax, numAleatorio
+    cmp ax, firstValue
+    jl erroRandGenerar
+saltarProc:    
+endm
+    ; Inicio del programa
+    MOV AX, @DATA
+    MOV DS, AX
+    DEFINE_PRINT_NUM
+    DEFINE_PRINT_NUM_UNS
+iniciarJuego:
+    mov numIntentos, 1      ;Inicia el juego con 0 intentos
+    imp vacio
+    imp titulo
+    imp instruccion     ; Muestra las instrucciones al jugador de como jugar        
+    generarRand
+    cmp al, "r"     ; si el jugador presiona "r" reinicia el juego
+    je iniciarJuego                                              
+    cmp al, "R"
+    je iniciarJuego
+    ;Si el jugador presiona "s" termina el juego
+    cmp al, "s"
+    je salir
+    cmp al, "S"
+    je salir
+adivinar:
+    imp mostrarIntentos
+    mov ah, 02
+    mov dl, numIntentos
+    add dl, 30h
+    int 21h
+    imp vacio
+    imp salirJuego
+    imp pregunta
+    adiv
+    cmp al, "r"     ; si el jugador presiona "r" reinicia el juego
+    je iniciarJuego                                              
+    cmp al, "R"
+    je iniciarJuego
+    ;Si el jugador presiona "s" termina el juego
+    cmp al, "s"
+    je salir
+    cmp al, "S"
+    je salir
+    mov ax, firstValue
+    cmp ax, numAleatorio
+    je ganador
+    jg mayor
+    jl menor
+
+mayor:
+    imp arriba
+    imp vacio
+    inc numIntentos
+    mov al, numIntentos
+    cmp al, 6
+    je perdida
+    jmp adivinar
+
+menor:
+    imp abajo
+    imp vacio
+    inc numIntentos
+    mov al, numIntentos
+    cmp al, 6
+    je perdida
+    jmp adivinar    
+
+perdida:
+    imp vacio
+    imp perdio
+    imp revelar
+    mov ax, numAleatorio
+    CALL print_num
+    jmp salir
+        
+    
+ganador:
+    imp vacio
+    imp victoria
+    imp mostrarIntentos
+    xor ax, ax
+    mov al, numIntentos
+    CALL print_num 
+        
+salir:
+    ; Terminar programa
+    MOV AH, 4Ch
+    INT 21h
+    
+END
